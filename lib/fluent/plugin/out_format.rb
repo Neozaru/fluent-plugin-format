@@ -4,8 +4,9 @@ module Fluent
 
     config_param :tag, :string
     config_param :include_original_fields, :bool, :default => true
+    config_param :time_format, :string, :default => "%d/%b/%Y:%H:%M:%S %z"
 
-    CONF_KEYS = %w{type tag include_original_fields}
+    CONF_KEYS = %w{type tag include_original_fields time_format}
 
     def configure(conf)
       super
@@ -36,10 +37,21 @@ module Fluent
       end
 
       @fields.each do |k, v|
-        result[k] = v.gsub(/%{(.+?)}/).each { record[$1] }
+        new_v = v
+        new_v = new_v.gsub(/%{(.+?)}/).each { record[$1] }
+        new_v = new_v.gsub(/%t{(.+?)}/).each { format_time(record[$1], @time_format) }
+        result[k] = new_v
       end
 
       return result
+    end
+
+    def format_time(timestamp, format)
+      if (!timestamp.is_a? Numeric)
+        return ""
+      end
+      t = Time.at(timestamp)
+      return t.strftime format
     end
   end
 end
