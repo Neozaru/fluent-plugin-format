@@ -121,7 +121,7 @@ class FormatOutputTest < Test::Unit::TestCase
       }
     ], d4.records
 
-    # Time format with proper parameter
+    # Time format with timestamp int parameter
     d5 = create_driver %[
       type format
       tag formatted
@@ -149,8 +149,36 @@ class FormatOutputTest < Test::Unit::TestCase
       }
     ], d5.records
 
+    # Time format with timestamp string parameter
+    d6 = create_driver %[
+      type format
+      tag formatted
+      include_original_fields false
+      key1 %{key1} changed!
+      new_key1 key1 -> %{key1}
+      new_key2 key1 -> %{key1}, key2 -> %t{key2}
+    ]
+
+    d6.run do
+      d6.emit({'key1' => 'val1', 'key2' => "1424347199"})
+      d6.emit({'key1' => 'val1'})
+    end
+
+    assert_equal [
+      {
+        'key1' => 'val1 changed!',
+        'new_key1' => 'key1 -> val1',
+        'new_key2' => 'key1 -> val1, key2 -> 19/Feb/2015:12:59:59 +0100'
+      },
+      {
+        'key1' => 'val1 changed!',
+        'new_key1' => 'key1 -> val1',
+        'new_key2' => 'key1 -> val1, key2 -> '
+      }
+    ], d6.records
+
     # Time format with proper parameter and custom format
-    d5 = create_driver %[
+    d7 = create_driver %[
       type format
       tag formatted
       include_original_fields false
@@ -160,9 +188,9 @@ class FormatOutputTest < Test::Unit::TestCase
       new_key2 key1 -> %{key1}, key2 -> %t{key2}
     ]
 
-    d5.run do
-      d5.emit({'key1' => 'val1', 'key2' => 1424347199})
-      d5.emit({'key1' => 'val1'})
+    d7.run do
+      d7.emit({'key1' => 'val1', 'key2' => 1424347199})
+      d7.emit({'key1' => 'val1'})
     end
 
     assert_equal [
@@ -176,6 +204,36 @@ class FormatOutputTest < Test::Unit::TestCase
         'new_key1' => 'key1 -> val1',
         'new_key2' => 'key1 -> val1, key2 -> '
       }
-    ], d5.records
+    ], d7.records
+
+    # Time format with proper parameter and BAD custom format
+    d8 = create_driver %[
+      type format
+      tag formatted
+      include_original_fields false
+      time_format %O%X%O
+      key1 %{key1} changed!
+      new_key1 key1 -> %{key1}
+      new_key2 key1 -> %{key1}, key2 -> %t{key2}
+    ]
+
+    d8.run do
+      d8.emit({'key1' => 'val1', 'key2' => 1424347199})
+      d8.emit({'key1' => 'val1'})
+    end
+
+    assert_equal [
+      {
+        'key1' => 'val1 changed!',
+        'new_key1' => 'key1 -> val1',
+        # Bad format parts are ignored
+        'new_key2' => 'key1 -> val1, key2 -> %O12:59:59%O'
+      },
+      {
+        'key1' => 'val1 changed!',
+        'new_key1' => 'key1 -> val1',
+        'new_key2' => 'key1 -> val1, key2 -> '
+      }
+    ], d8.records
   end
 end

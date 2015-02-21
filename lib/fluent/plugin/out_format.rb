@@ -47,11 +47,16 @@ module Fluent
     end
 
     def format_time(timestamp, format)
-      if (!timestamp.is_a? Numeric)
+      if (timestamp.nil?)
         return ""
       end
-      t = Time.at(timestamp)
+      int_timestamp = Integer(timestamp)
+      t = Time.at(int_timestamp)
+
       return t.strftime format
+
+    rescue ArgumentError => e
+      return ""
     end
   end
 end
